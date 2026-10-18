@@ -15,11 +15,10 @@ type NodePoolState struct {
 	Name                          types.String `tfsdk:"name"`
 	Id                            types.String `tfsdk:"id"`
 	AutoRepair                    types.Bool   `tfsdk:"auto_repair"`
+	EC2InstanceMetadataHttpTokens types.String `tfsdk:"ec2_instance_metadata_http_tokens"`
 	Labels                        types.Map    `tfsdk:"labels"`
 	MaxSurge                      types.String `tfsdk:"max_surge"`
 	MaxUnavailable                types.String `tfsdk:"max_unavailable"`
-	Max                           types.Int64  `tfsdk:"max"`
-	Min                           types.Int64  `tfsdk:"min"`
 	ClusterName                   types.String `tfsdk:"cluster_name"`
 	Config                        types.List   `tfsdk:"config"`
 	NodeDrainTimeout              types.String `tfsdk:"node_drain_timeout"`
@@ -36,7 +35,7 @@ type NodePoolState struct {
 	Tenancy                       types.String `tfsdk:"tenancy"`
 	ResourceTags                  types.String `tfsdk:"resource_tags"`
 	Size                          types.Int64  `tfsdk:"size"`
-	SecurityGroups                types.String `tfsdk:"security_groups"`
+	Additional_security_group_ids types.List   `tfsdk:"additional_security_group_ids"`
 	Filters                       types.String `tfsdk:"filters"`
 	SubnetId                      types.String `tfsdk:"subnet_id"`
 	Platform_type                 types.String `tfsdk:"platform_type"`
@@ -46,6 +45,7 @@ type NodePoolState struct {
 	Tuning_config                 types.List   `tfsdk:"tuning_config"`
 	Cluster_id                    types.String `tfsdk:"cluster_id"`
 	Phase                         types.String `tfsdk:"phase"`
+	Autoscaling                   types.Object `tfsdk:"autoscaling"`
 }
 
 // mergeResponseNodePool merges API response values into Terraform state.
@@ -77,4 +77,5 @@ func mergeResponseNodePool(plan, response *NodePoolState) {
 	if !response.Phase.IsNull() {
 		plan.Phase = response.Phase
 	}
+	plan.Autoscaling = mergeTerraformObject(plan.Autoscaling, response.Autoscaling, []string{})
 }

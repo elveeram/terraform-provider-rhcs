@@ -40,11 +40,28 @@ variable "auto_repair" {
 variable "replicas" {
   type        = number
   description = "Fixed replica count"
+  default     = null
+}
+
+variable "autoscaling" {
+  type = object({
+    enabled      = bool
+    min_replicas = optional(number)
+    max_replicas = optional(number)
+  })
+  description = "Optional NodePool autoscaling configuration"
+  default     = null
 }
 
 variable "instance_type" {
   type        = string
   description = "EC2 instance type (e.g. m5.xlarge)"
+}
+
+variable "ec2_instance_metadata_http_tokens" {
+  type        = string
+  description = "EC2 instance metadata HTTP token requirement"
+  default     = null
 }
 
 variable "disk_size" {

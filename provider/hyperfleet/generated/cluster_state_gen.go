@@ -24,10 +24,10 @@ type ClusterState struct {
 	BalancingIgnoredLabels         types.List   `tfsdk:"balancing_ignored_labels"`
 	Expanders                      types.List   `tfsdk:"expanders"`
 	MaxFreeDifferenceRatioPercent  types.Int64  `tfsdk:"max_free_difference_ratio_percent"`
-	MaxNodeProvisionTime           types.String `tfsdk:"max_node_provision_time"`
-	MaxNodesTotal                  types.Int64  `tfsdk:"max_nodes_total"`
-	MaxPodGracePeriod              types.Int64  `tfsdk:"max_pod_grace_period"`
-	PodPriorityThreshold           types.Int64  `tfsdk:"pod_priority_threshold"`
+	AutoscalerMaxNodeProvisionTime types.String `tfsdk:"autoscaler_max_node_provision_time"`
+	AutoscalerMaxNodesTotal        types.Int64  `tfsdk:"autoscaler_max_nodes_total"`
+	AutoscalerMaxPodGracePeriod    types.Int64  `tfsdk:"autoscaler_max_pod_grace_period"`
+	AutoscalerPodPriorityThreshold types.Int64  `tfsdk:"autoscaler_pod_priority_threshold"`
 	DelayAfterAddSeconds           types.Int64  `tfsdk:"delay_after_add_seconds"`
 	DelayAfterDeleteSeconds        types.Int64  `tfsdk:"delay_after_delete_seconds"`
 	DelayAfterFailureSeconds       types.Int64  `tfsdk:"delay_after_failure_seconds"`
@@ -82,6 +82,7 @@ type ClusterState struct {
 	Tags                           types.Map    `tfsdk:"tags"`
 	Operator_roles_prefix          types.String `tfsdk:"operator_roles_prefix"`
 	Cloud_region                   types.String `tfsdk:"cloud_region"`
+	No_cni                         types.Bool   `tfsdk:"no_cni"`
 	Api_url                        types.String `tfsdk:"api_url"`
 	Phase                          types.String `tfsdk:"phase"`
 	Network                        types.Object `tfsdk:"network"`
@@ -113,6 +114,9 @@ func mergeResponseCluster(plan, response *ClusterState) {
 	}
 	if !response.Cloud_region.IsNull() {
 		plan.Cloud_region = response.Cloud_region
+	}
+	if !response.No_cni.IsNull() {
+		plan.No_cni = response.No_cni
 	}
 	if !response.Api_url.IsNull() {
 		plan.Api_url = response.Api_url

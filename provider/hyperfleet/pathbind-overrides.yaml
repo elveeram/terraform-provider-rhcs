@@ -22,7 +22,6 @@ resources:
         immutable: true
         description: "Human-readable cluster name. Immutable after creation."
 
-      # optional mutable cluster metadata fields
       - path: spec.deleteProtection
         alias: delete_protection
         type: bool
@@ -74,6 +73,16 @@ resources:
           - create
         description: "AWS region identifier (e.g. `us-east-1`). Derived from `availability_zones` if not set. Immutable after creation."
 
+      # provider-only field — translated to HostedCluster.Networking.NetworkType=Other
+      - alias: no_cni
+        type: bool
+        immutable: true
+        computed: true
+        optional: true
+        operations:
+          - create
+        description: "Disable CNI creation to let users bring their own CNI. Cannot be changed after creation."
+
       # optional mutable fields
       - path: spec.expirationTimestamp
         alias: expiration_timestamp
@@ -85,8 +94,22 @@ resources:
         type: string
         description: "Scheduler profile used by the hosted cluster. Valid values are LowNodeUtilization, HighNodeUtilization, and NoScoring."
 
-      # Nested object arrays use JSON strings because list(object) currently
-      # supports only scalar element attributes.
+      - path: spec.hostedCluster.autoscaling.maxNodeProvisionTime
+        alias: autoscalerMaxNodeProvisionTime
+        type: string
+        description: "Maximum time cluster-autoscaler waits for a node to be provisioned."
+      - path: spec.hostedCluster.autoscaling.maxNodesTotal
+        alias: autoscalerMaxNodesTotal
+        type: "*int32"
+        description: "Maximum number of nodes across all node pools."
+      - path: spec.hostedCluster.autoscaling.maxPodGracePeriod
+        alias: autoscalerMaxPodGracePeriod
+        type: "*int32"
+        description: "Maximum pod graceful termination period in seconds."
+      - path: spec.hostedCluster.autoscaling.podPriorityThreshold
+        alias: autoscalerPodPriorityThreshold
+        type: "*int32"
+        description: "Pod priority threshold for cluster autoscaler scale-up."
       - path: spec.hostedCluster.configuration.authentication.oidcProviders
         alias: oidc_providers
         goName: OidcProviders
@@ -98,7 +121,8 @@ resources:
         type: string
         description: "Custom component routes encoded as a JSON array."
 
-      # Complex SDK values use explicit Terraform representations.
+      # Complex SDK values use explicit Terraform representations. Arrays are
+      # JSON strings because the draft does not retain their element schemas.
       - path: spec.hostedCluster.configuration.kubelet.kubeReserved
         type: map
       - path: spec.hostedCluster.configuration.kubelet.systemReserved
@@ -123,6 +147,7 @@ resources:
         alias: network_type
         type: string
         bundle: network
+        immutable: true
       - path: spec.hostedCluster.networking.serviceNetwork
         alias: service_cidr
         type: string
@@ -224,6 +249,15 @@ resources:
         computed: true
         description: "Platform type for the NodePool (AWS)."
 
+      - path: spec.ec2InstanceMetadataHttpTokens
+        alias: ec2_instance_metadata_http_tokens
+        goName: EC2InstanceMetadataHttpTokens
+        type: string
+        immutable: true
+        operations:
+          - create
+        description: "EC2 instance metadata HTTP token requirement. `required` enforces IMDSv2; `optional` permits IMDSv1. Defaults to `required` and is immutable after creation."
+
       - path: spec.labels
         type: map
       - path: spec.nodePool.config
@@ -262,7 +296,15 @@ resources:
       - path: spec.nodePool.platform.aws.resourceTags
         type: string
       - path: spec.nodePool.platform.aws.securityGroups
-        type: string
+        alias: additional_security_group_ids
+        description: "Additional AWS security group IDs to attach to node pool instances."
+        type: list(object)
+        element:
+          attributes:
+            id:
+              type: string
+              required: true
+              description: "AWS security group ID (for example sg-0a1b2c3d)."
       - path: spec.nodePool.platform.aws.subnet.filters
         type: string
 
@@ -281,6 +323,24 @@ resources:
           - read
         description: "Current lifecycle phase of the node pool (Provisioning, Ready, Deleting)."
 
+      - alias: enabled
+        bundle: autoscaling
+        type: bool
+        operations:
+          - create
+          - update
+        description: "Enable NodePool autoscaling."
+
+      - path: spec.nodePool.autoScaling.min
+        alias: min_replicas
+        bundle: autoscaling
+        description: "Minimum number of replicas when autoscaling is enabled."
+
+      - path: spec.nodePool.autoScaling.max
+        alias: max_replicas
+        bundle: autoscaling
+        description: "Maximum number of replicas when autoscaling is enabled."
+
   oidcConfig:
     aliases:
       - path: metadata.name
@@ -288,7 +348,7 @@ resources:
         type: string
         required: true
         immutable: true
-        description: "Client-selected OIDC configuration name."
+        description: "Client-selected OIDC configuration name. Immutable after creation."
 
       - path: metadata.uid
         alias: id

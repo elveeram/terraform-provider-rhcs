@@ -11,12 +11,26 @@ profiles:
     multi_az: false
     byovpc: true
     private: false
-    proxy: true
+    proxy: false
     oidc_config: managed
     version: latest
     tagging: true
 
-- as: hf-scheduler
+- as: hyperfleet-explicit-proxy
+  cluster:
+    cluster_type: hyperfleet
+    product_id: rosa
+    cloud_provider: aws
+    region: us-east-1
+    multi_az: false
+    byovpc: true
+    private: false
+    proxy: true # Configures explicit HTTP(S) proxy URLs; this is not transparent proxying.
+    oidc_config: managed
+    tagging: true
+    version: latest
+
+- as: hf-optional-conf
   cluster:
     cluster_type: hyperfleet
     product_id: rosa
@@ -26,7 +40,12 @@ profiles:
     byovpc: true
     private: false
     oidc_config: managed
+    tagging: true
     scheduler_profile: HighNodeUtilization
+    autoscaler_max_node_provision_time: 15m
+    autoscaler_max_nodes_total: 10
+    autoscaler_max_pod_grace_period: 600
+    autoscaler_pod_priority_threshold: -8
     version: latest
 
 - as: hyperfleet-hcp-ad
@@ -62,3 +81,18 @@ profiles:
       - "*.registry.com"
     worker_disk_size: 75
     additional_sg_number: 3
+
+- as: hf-autoscaling
+  cluster:
+    cluster_type: hyperfleet
+    product_id: rosa
+    cloud_provider: aws
+    region: us-east-1
+    multi_az: false
+    byovpc: true
+    private: false
+    oidc_config: managed
+    version: latest
+    autoscaling_enabled: true
+    min_replicas: 1
+    max_replicas: 2

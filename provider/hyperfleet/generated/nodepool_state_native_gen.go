@@ -11,11 +11,10 @@ type NodePoolStateNative struct {
 	Name                          string            `hfsdk:"metadata.name"`
 	Id                            string            `hfsdk:"metadata.uid"`
 	AutoRepair                    *bool             `hfsdk:"spec.autoRepair"`
+	EC2InstanceMetadataHttpTokens string            `hfsdk:"spec.ec2InstanceMetadataHttpTokens"`
 	Labels                        map[string]string `hfsdk:"spec.labels"`
 	MaxSurge                      string            `hfsdk:"spec.maxSurge"`
 	MaxUnavailable                string            `hfsdk:"spec.maxUnavailable"`
-	Max                           *int32            `hfsdk:"spec.nodePool.autoScaling.max"`
-	Min                           *int32            `hfsdk:"spec.nodePool.autoScaling.min"`
 	ClusterName                   string            `hfsdk:"spec.nodePool.clusterName"`
 	Config                        string            `hfsdk:"spec.nodePool.config"`
 	NodeDrainTimeout              string            `hfsdk:"spec.nodePool.nodeDrainTimeout"`
@@ -32,7 +31,7 @@ type NodePoolStateNative struct {
 	Tenancy                       string            `hfsdk:"spec.nodePool.platform.aws.placement.tenancy"`
 	ResourceTags                  string            `hfsdk:"spec.nodePool.platform.aws.resourceTags"`
 	Size                          *int64            `hfsdk:"spec.nodePool.platform.aws.rootVolume.size"`
-	SecurityGroups                string            `hfsdk:"spec.nodePool.platform.aws.securityGroups"`
+	Additional_security_group_ids string            `hfsdk:"spec.nodePool.platform.aws.securityGroups"`
 	Filters                       string            `hfsdk:"spec.nodePool.platform.aws.subnet.filters"`
 	SubnetId                      string            `hfsdk:"spec.nodePool.platform.aws.subnet.id"`
 	Platform_type                 string            `hfsdk:"spec.nodePool.platform.type"`
@@ -42,4 +41,12 @@ type NodePoolStateNative struct {
 	Tuning_config                 string            `hfsdk:"spec.nodePool.tuningConfig"`
 	Cluster_id                    string            `hfsdk:"-"`
 	Phase                         string            `hfsdk:"-"`
+	Autoscaling                   NodePoolAutoscalingNative
+}
+
+// NodePoolAutoscalingNative is the native representation of the autoscaling bundle.
+type NodePoolAutoscalingNative struct {
+	Max_replicas *int32 `hfsdk:"spec.nodePool.autoScaling.max"`
+	Min_replicas *int32 `hfsdk:"spec.nodePool.autoScaling.min"`
+	Enabled      bool   `hfsdk:"-"`
 }

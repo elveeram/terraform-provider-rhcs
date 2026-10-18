@@ -126,6 +126,13 @@ func (r *NodePoolResource) Schema(
 				MarkdownDescription: "AutoRepair.",
 				Optional:            true,
 			},
+			"ec2_instance_metadata_http_tokens": schema.StringAttribute{
+				MarkdownDescription: "EC2InstanceMetadataHttpTokens.",
+				Optional:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
 			"labels": schema.MapAttribute{
 				MarkdownDescription: "Labels.",
 				Optional:            true,
@@ -137,14 +144,6 @@ func (r *NodePoolResource) Schema(
 			},
 			"max_unavailable": schema.StringAttribute{
 				MarkdownDescription: "MaxUnavailable.",
-				Optional:            true,
-			},
-			"max": schema.Int64Attribute{
-				MarkdownDescription: "Max.",
-				Optional:            true,
-			},
-			"min": schema.Int64Attribute{
-				MarkdownDescription: "Min.",
 				Optional:            true,
 			},
 			"cluster_name": schema.StringAttribute{
@@ -223,9 +222,17 @@ func (r *NodePoolResource) Schema(
 				MarkdownDescription: "Size.",
 				Optional:            true,
 			},
-			"security_groups": schema.StringAttribute{
-				MarkdownDescription: "SecurityGroups.",
-				Optional:            true,
+			"additional_security_group_ids": schema.ListNestedAttribute{
+				MarkdownDescription: "Additional AWS security group IDs to attach to node pool instances.",
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id": schema.StringAttribute{
+							MarkdownDescription: "AWS security group ID (for example sg-0a1b2c3d).",
+							Required:            true,
+						},
+					},
+				},
+				Optional: true,
 			},
 			"filters": schema.StringAttribute{
 				MarkdownDescription: "Filters.",
@@ -295,6 +302,23 @@ func (r *NodePoolResource) Schema(
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+			},
+			"autoscaling": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"max_replicas": schema.Int64Attribute{
+						MarkdownDescription: "Max_replicas.",
+						Optional:            true,
+					},
+					"min_replicas": schema.Int64Attribute{
+						MarkdownDescription: "Min_replicas.",
+						Optional:            true,
+					},
+					"enabled": schema.BoolAttribute{
+						MarkdownDescription: "Enabled.",
+						Optional:            true,
+					},
+				},
+				Optional: true,
 			},
 		},
 	}
@@ -637,6 +661,9 @@ func terraformNodePoolToNative(tf *NodePoolState) (*NodePoolStateNative, diag.Di
 		b := tf.AutoRepair.ValueBool()
 		native.AutoRepair = &b
 	}
+	if !tf.EC2InstanceMetadataHttpTokens.IsNull() && !tf.EC2InstanceMetadataHttpTokens.IsUnknown() {
+		native.EC2InstanceMetadataHttpTokens = tf.EC2InstanceMetadataHttpTokens.ValueString()
+	}
 	if !tf.Labels.IsNull() && !tf.Labels.IsUnknown() {
 		values, collectionDiags := terraformMapToStringMap(tf.Labels)
 		diags = append(diags, collectionDiags...)
@@ -647,24 +674,6 @@ func terraformNodePoolToNative(tf *NodePoolState) (*NodePoolStateNative, diag.Di
 	}
 	if !tf.MaxUnavailable.IsNull() && !tf.MaxUnavailable.IsUnknown() {
 		native.MaxUnavailable = tf.MaxUnavailable.ValueString()
-	}
-	if !tf.Max.IsNull() && !tf.Max.IsUnknown() {
-		value := tf.Max.ValueInt64()
-		if value < math.MinInt32 || value > math.MaxInt32 {
-			diags.AddError("Invalid int32 value", fmt.Sprintf("field Max value %d is outside the int32 range", value))
-		} else {
-			i := int32(value)
-			native.Max = &i
-		}
-	}
-	if !tf.Min.IsNull() && !tf.Min.IsUnknown() {
-		value := tf.Min.ValueInt64()
-		if value < math.MinInt32 || value > math.MaxInt32 {
-			diags.AddError("Invalid int32 value", fmt.Sprintf("field Min value %d is outside the int32 range", value))
-		} else {
-			i := int32(value)
-			native.Min = &i
-		}
 	}
 	if !tf.ClusterName.IsNull() && !tf.ClusterName.IsUnknown() {
 		native.ClusterName = tf.ClusterName.ValueString()
@@ -719,8 +728,10 @@ func terraformNodePoolToNative(tf *NodePoolState) (*NodePoolStateNative, diag.Di
 		i := tf.Size.ValueInt64()
 		native.Size = &i
 	}
-	if !tf.SecurityGroups.IsNull() && !tf.SecurityGroups.IsUnknown() {
-		native.SecurityGroups = tf.SecurityGroups.ValueString()
+	if !tf.Additional_security_group_ids.IsNull() && !tf.Additional_security_group_ids.IsUnknown() {
+		encoded, collectionDiags := terraformObjectListToJSON(tf.Additional_security_group_ids)
+		diags = append(diags, collectionDiags...)
+		native.Additional_security_group_ids = encoded
 	}
 	if !tf.Filters.IsNull() && !tf.Filters.IsUnknown() {
 		native.Filters = tf.Filters.ValueString()
@@ -759,6 +770,14 @@ func terraformNodePoolToNative(tf *NodePoolState) (*NodePoolStateNative, diag.Di
 	if !tf.Phase.IsNull() && !tf.Phase.IsUnknown() {
 		native.Phase = tf.Phase.ValueString()
 	}
+	if !tf.Autoscaling.IsNull() && !tf.Autoscaling.IsUnknown() {
+		bundleDiags := objectToNative(tf.Autoscaling, &native.Autoscaling, map[string]string{
+			"max_replicas": "Max_replicas",
+			"min_replicas": "Min_replicas",
+			"enabled":      "Enabled",
+		})
+		diags = append(diags, bundleDiags...)
+	}
 	return native, diags
 }
 
@@ -773,11 +792,10 @@ func nativeNodePoolToTerraform(native *NodePoolStateNative) (*NodePoolState, dia
 	tf.Name = toTerraformString(native.Name)
 	tf.Id = toTerraformString(native.Id)
 	tf.AutoRepair = toTerraformBoolPtr(native.AutoRepair)
+	tf.EC2InstanceMetadataHttpTokens = toTerraformString(native.EC2InstanceMetadataHttpTokens)
 	tf.Labels = toTerraformMap(native.Labels)
 	tf.MaxSurge = toTerraformString(native.MaxSurge)
 	tf.MaxUnavailable = toTerraformString(native.MaxUnavailable)
-	tf.Max = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.Max))
-	tf.Min = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.Min))
 	tf.ClusterName = toTerraformString(native.ClusterName)
 	{
 		var collectionDiags diag.Diagnostics
@@ -800,7 +818,13 @@ func nativeNodePoolToTerraform(native *NodePoolStateNative) (*NodePoolState, dia
 	tf.Tenancy = toTerraformString(native.Tenancy)
 	tf.ResourceTags = toTerraformString(native.ResourceTags)
 	tf.Size = toTerraformInt64Ptr(normalizeOptionalInt64(native.Size))
-	tf.SecurityGroups = toTerraformString(native.SecurityGroups)
+	{
+		var collectionDiags diag.Diagnostics
+		tf.Additional_security_group_ids, collectionDiags = terraformJSONToObjectList(native.Additional_security_group_ids, map[string]attr.Type{
+			"id": types.StringType,
+		})
+		diags = append(diags, collectionDiags...)
+	}
 	tf.Filters = toTerraformString(native.Filters)
 	tf.SubnetId = toTerraformString(native.SubnetId)
 	tf.Platform_type = toTerraformString(native.Platform_type)
@@ -824,5 +848,17 @@ func nativeNodePoolToTerraform(native *NodePoolStateNative) (*NodePoolState, dia
 	}
 	tf.Cluster_id = toTerraformString(native.Cluster_id)
 	tf.Phase = toTerraformString(native.Phase)
+	{
+		bundleAttrs := nativeBundleAttributes(native.Autoscaling, map[string]string{
+			"max_replicas": "Max_replicas",
+			"min_replicas": "Min_replicas",
+			"enabled":      "Enabled",
+		})
+		tf.Autoscaling, _ = types.ObjectValue(map[string]attr.Type{
+			"max_replicas": types.Int64Type,
+			"min_replicas": types.Int64Type,
+			"enabled":      types.BoolType,
+		}, bundleAttrs)
+	}
 	return tf, diags
 }

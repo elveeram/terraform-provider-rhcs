@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -166,20 +167,20 @@ func (r *ClusterResource) Schema(
 				MarkdownDescription: "MaxFreeDifferenceRatioPercent.",
 				Optional:            true,
 			},
-			"max_node_provision_time": schema.StringAttribute{
-				MarkdownDescription: "MaxNodeProvisionTime.",
+			"autoscaler_max_node_provision_time": schema.StringAttribute{
+				MarkdownDescription: "AutoscalerMaxNodeProvisionTime.",
 				Optional:            true,
 			},
-			"max_nodes_total": schema.Int64Attribute{
-				MarkdownDescription: "MaxNodesTotal.",
+			"autoscaler_max_nodes_total": schema.Int64Attribute{
+				MarkdownDescription: "AutoscalerMaxNodesTotal.",
 				Optional:            true,
 			},
-			"max_pod_grace_period": schema.Int64Attribute{
-				MarkdownDescription: "MaxPodGracePeriod.",
+			"autoscaler_max_pod_grace_period": schema.Int64Attribute{
+				MarkdownDescription: "AutoscalerMaxPodGracePeriod.",
 				Optional:            true,
 			},
-			"pod_priority_threshold": schema.Int64Attribute{
-				MarkdownDescription: "PodPriorityThreshold.",
+			"autoscaler_pod_priority_threshold": schema.Int64Attribute{
+				MarkdownDescription: "AutoscalerPodPriorityThreshold.",
 				Optional:            true,
 			},
 			"delay_after_add_seconds": schema.Int64Attribute{
@@ -414,6 +415,14 @@ func (r *ClusterResource) Schema(
 					stringplanmodifier.RequiresReplace(), stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"no_cni": schema.BoolAttribute{
+				MarkdownDescription: "No_cni.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.Bool{
+					boolplanmodifier.RequiresReplace(),
+					boolplanmodifier.UseStateForUnknown(),
+				},
+			},
 			"api_url": schema.StringAttribute{
 				MarkdownDescription: "Api_url.",
 				Computed:            true,
@@ -445,6 +454,7 @@ func (r *ClusterResource) Schema(
 					"network_type": schema.StringAttribute{
 						MarkdownDescription: "Network_type.",
 						Optional:            true,
+						PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
 					},
 					"service_cidr": schema.StringAttribute{
 						MarkdownDescription: "Service_cidr.",
@@ -876,34 +886,34 @@ func terraformClusterToNative(tf *ClusterState) (*ClusterStateNative, diag.Diagn
 			native.MaxFreeDifferenceRatioPercent = &i
 		}
 	}
-	if !tf.MaxNodeProvisionTime.IsNull() && !tf.MaxNodeProvisionTime.IsUnknown() {
-		native.MaxNodeProvisionTime = tf.MaxNodeProvisionTime.ValueString()
+	if !tf.AutoscalerMaxNodeProvisionTime.IsNull() && !tf.AutoscalerMaxNodeProvisionTime.IsUnknown() {
+		native.AutoscalerMaxNodeProvisionTime = tf.AutoscalerMaxNodeProvisionTime.ValueString()
 	}
-	if !tf.MaxNodesTotal.IsNull() && !tf.MaxNodesTotal.IsUnknown() {
-		value := tf.MaxNodesTotal.ValueInt64()
+	if !tf.AutoscalerMaxNodesTotal.IsNull() && !tf.AutoscalerMaxNodesTotal.IsUnknown() {
+		value := tf.AutoscalerMaxNodesTotal.ValueInt64()
 		if value < math.MinInt32 || value > math.MaxInt32 {
-			diags.AddError("Invalid int32 value", fmt.Sprintf("field MaxNodesTotal value %d is outside the int32 range", value))
+			diags.AddError("Invalid int32 value", fmt.Sprintf("field AutoscalerMaxNodesTotal value %d is outside the int32 range", value))
 		} else {
 			i := int32(value)
-			native.MaxNodesTotal = &i
+			native.AutoscalerMaxNodesTotal = &i
 		}
 	}
-	if !tf.MaxPodGracePeriod.IsNull() && !tf.MaxPodGracePeriod.IsUnknown() {
-		value := tf.MaxPodGracePeriod.ValueInt64()
+	if !tf.AutoscalerMaxPodGracePeriod.IsNull() && !tf.AutoscalerMaxPodGracePeriod.IsUnknown() {
+		value := tf.AutoscalerMaxPodGracePeriod.ValueInt64()
 		if value < math.MinInt32 || value > math.MaxInt32 {
-			diags.AddError("Invalid int32 value", fmt.Sprintf("field MaxPodGracePeriod value %d is outside the int32 range", value))
+			diags.AddError("Invalid int32 value", fmt.Sprintf("field AutoscalerMaxPodGracePeriod value %d is outside the int32 range", value))
 		} else {
 			i := int32(value)
-			native.MaxPodGracePeriod = &i
+			native.AutoscalerMaxPodGracePeriod = &i
 		}
 	}
-	if !tf.PodPriorityThreshold.IsNull() && !tf.PodPriorityThreshold.IsUnknown() {
-		value := tf.PodPriorityThreshold.ValueInt64()
+	if !tf.AutoscalerPodPriorityThreshold.IsNull() && !tf.AutoscalerPodPriorityThreshold.IsUnknown() {
+		value := tf.AutoscalerPodPriorityThreshold.ValueInt64()
 		if value < math.MinInt32 || value > math.MaxInt32 {
-			diags.AddError("Invalid int32 value", fmt.Sprintf("field PodPriorityThreshold value %d is outside the int32 range", value))
+			diags.AddError("Invalid int32 value", fmt.Sprintf("field AutoscalerPodPriorityThreshold value %d is outside the int32 range", value))
 		} else {
 			i := int32(value)
-			native.PodPriorityThreshold = &i
+			native.AutoscalerPodPriorityThreshold = &i
 		}
 	}
 	if !tf.DelayAfterAddSeconds.IsNull() && !tf.DelayAfterAddSeconds.IsUnknown() {
@@ -1150,6 +1160,9 @@ func terraformClusterToNative(tf *ClusterState) (*ClusterStateNative, diag.Diagn
 	if !tf.Cloud_region.IsNull() && !tf.Cloud_region.IsUnknown() {
 		native.Cloud_region = tf.Cloud_region.ValueString()
 	}
+	if !tf.No_cni.IsNull() && !tf.No_cni.IsUnknown() {
+		native.No_cni = tf.No_cni.ValueBool()
+	}
 	if !tf.Api_url.IsNull() && !tf.Api_url.IsUnknown() {
 		native.Api_url = tf.Api_url.ValueString()
 	}
@@ -1203,10 +1216,10 @@ func nativeClusterToTerraform(native *ClusterStateNative) (*ClusterState, diag.D
 	tf.BalancingIgnoredLabels = toTerraformList(native.BalancingIgnoredLabels)
 	tf.Expanders = toTerraformList(native.Expanders)
 	tf.MaxFreeDifferenceRatioPercent = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.MaxFreeDifferenceRatioPercent))
-	tf.MaxNodeProvisionTime = toTerraformString(native.MaxNodeProvisionTime)
-	tf.MaxNodesTotal = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.MaxNodesTotal))
-	tf.MaxPodGracePeriod = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.MaxPodGracePeriod))
-	tf.PodPriorityThreshold = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.PodPriorityThreshold))
+	tf.AutoscalerMaxNodeProvisionTime = toTerraformString(native.AutoscalerMaxNodeProvisionTime)
+	tf.AutoscalerMaxNodesTotal = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.AutoscalerMaxNodesTotal))
+	tf.AutoscalerMaxPodGracePeriod = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.AutoscalerMaxPodGracePeriod))
+	tf.AutoscalerPodPriorityThreshold = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.AutoscalerPodPriorityThreshold))
 	tf.DelayAfterAddSeconds = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.DelayAfterAddSeconds))
 	tf.DelayAfterDeleteSeconds = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.DelayAfterDeleteSeconds))
 	tf.DelayAfterFailureSeconds = toTerraformInt64Ptr(normalizeOptionalInt32ToInt64(native.DelayAfterFailureSeconds))
@@ -1261,6 +1274,7 @@ func nativeClusterToTerraform(native *ClusterStateNative) (*ClusterState, diag.D
 	tf.Tags = toTerraformMap(native.Tags)
 	tf.Operator_roles_prefix = toTerraformString(native.Operator_roles_prefix)
 	tf.Cloud_region = toTerraformString(native.Cloud_region)
+	tf.No_cni = toTerraformBool(native.No_cni)
 	tf.Api_url = toTerraformString(native.Api_url)
 	tf.Phase = toTerraformString(native.Phase)
 	{
